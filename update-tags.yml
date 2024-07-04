@@ -1,0 +1,103 @@
+name: 'CI'
+run-name: 'Build #${{ github.run_number }} - PR: ${{ github.event.PR.message }}'
+
+on:
+  pull_request:
+    paths:
+    - '.github/workflows/update-tags.yml'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: read
+
+jobs:
+  GetChangedElements:
+    name: 'Get Changed Elements'
+    runs-on: ubuntu-latest
+
+    outputs:
+      elementsToBuild: ${{ steps.elements-to-run-ci.outputs.elementsToBuild }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Create changed files src file
+      id: create-changed-files-src-file
+      shell: pwsh
+      run: |
+        $elements = (Get-Content changed-files-config.json | ConvertFrom-Json).elements
+        New-Item changed-files-config.yaml
+        foreach ($element in $elements) {
+          Add-Content -Path .\changed-files-config.yaml -Value "$($element.name):"
+          foreach ($path in $element.path) {
+            Add-Content -Path .\changed-files-config.yaml -Value "- $path"
+          }
+        }
+        $elementsCompressed = $elements | ConvertTo-Json -Compress
+        Write-Host "pwsh = $($elements.name)"
+        Write-Host "json = $elementsCompressed"
+        "elements=$elementsCompressed" >> $env:GITHUB_OUTPUT
+        
+    - name: Evaluate Changed Files
+      uses: tj-actions/changed-files@v44
+      id: changed-files
+      with:
+        dir_names: true
+        files_yaml_from_source_file: changed-files-config.yaml
+
+    - name: Output elements to run CI for
+      id: elements-to-run-ci
+      shell: pwsh
+      run: |
+        $elements = ('${{ steps.create-changed-files-src-file.outputs.elements }}' | ConvertFrom-Json)
+        Write-Host "all elements from config = $($elements.name)"
+        $allOutputs = ('${{ toJson(steps.changed-files.outputs) }}' | ConvertFrom-Json)
+        $elementsToBuild = @()
+        foreach ($element in $elements) {
+          Write-Host "$($element.name) changed:" $allOutputs."$($element.name)_any_changed"
+          if ($allOutputs."$($element.name)_any_changed" -eq "true") {
+            $elementsToBuild += $element
+          }
+        }
+        if ($elementsToBuild.Count -eq 1) {
+          $elementsToBuildJson = "[$($elementsToBuild | ConvertTo-Json -Compress)]"
+        }
+        else {
+          $elementsToBuildJson = $elementsToBuild | ConvertTo-Json -Compress
+        }
+        Write-Host "pwsh = $($elementsToBuild.name)"
+        Write-Host "json = $elementsToBuildJson"
+        "elementsToBuild=$elementsToBuildJson" >> $env:GITHUB_OUTPUT
+        
+
+  TestGitVersion:
+    name: 'Test Git Version - ${{ matrix.element.name }}'
+    runs-on: ubuntu-latest
+    needs: GetChangedElements
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        element: ${{fromJson(needs.GetChangedElements.outputs.elementsToBuild)}}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: GitVersion
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v1.1.1
+      with:
+        git-tool-latest: 'true'
+        use-config-file: 'true'
+        pre-release: 'false'
+        additional-arguments: '-b ${{ github.event.pull_request.head.ref }} /overrideconfig tag-prefix=${{ matrix.element.name }}-v'
+
+    - name: Output element
+      id: output-element
+      shell: pwsh
+      run: |
+        Write-Host "element=${{ matrix.element.name }}"
+        Write-Host "element path=${{ toJson(matrix.element.path) }}"
+        Write-Host "new version=${{ steps.gitversion.outputs.majorMinorPatch }}"
