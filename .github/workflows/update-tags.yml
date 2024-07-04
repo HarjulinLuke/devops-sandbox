@@ -3,6 +3,7 @@ run-name: 'Build #${{ github.run_number }} - PR: ${{ github.event.pull_request.t
 
 on:
   pull_request:
+    types: [closed]
     paths:
     - '.github/workflows/update-tags.yml'
 
@@ -15,7 +16,7 @@ jobs:
   GetChangedElements:
     name: 'Get Changed Elements'
     runs-on: ubuntu-latest
-
+    if: github.event.pull_request.merged == true
     outputs:
       elementsToBuild: ${{ steps.elements-to-run-ci.outputs.elementsToBuild }}
     steps:
@@ -74,6 +75,7 @@ jobs:
   TestGitVersion:
     name: 'Test Git Version - ${{ matrix.element.name }}'
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     needs: GetChangedElements
     strategy:
       fail-fast: false
