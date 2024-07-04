@@ -107,19 +107,10 @@ jobs:
         Write-Host "element path=${{ toJson(matrix.element.path) }}"
         Write-Host "new version=${{ steps.gitversion.outputs.majorMinorPatch }}"
 
-    - name: Create Git Tag
+    - name: Update tag
+      shell: 'pwsh'
       run: |
-        const tag = '${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}';
-        const ref = process.env.GITHUB_REF;
-        const sha = process.env.GITHUB_SHA;
-        const { Octokit } = require("@octokit/rest");
-        const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-        octokit.git.createRef({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          ref: `refs/tags/${tag}`,
-          sha: sha
-        });
-        console.log(`Created tag ${tag} for ref ${ref}`);
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config user.name "github-actions[bot]"
+        git tag -f ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}
+        git push origin -f ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}
