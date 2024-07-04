@@ -4,8 +4,6 @@ run-name: 'Build #${{ github.run_number }} - PR: ${{ github.event.pull_request.t
 on:
   pull_request:
     types: [closed]
-    paths:
-    - '.github/workflows/update-tags.yml'
 
 permissions:
   id-token: write
