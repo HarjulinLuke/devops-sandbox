@@ -106,3 +106,20 @@ jobs:
         Write-Host "element=${{ matrix.element.name }}"
         Write-Host "element path=${{ toJson(matrix.element.path) }}"
         Write-Host "new version=${{ steps.gitversion.outputs.majorMinorPatch }}"
+
+    - name: Create Git Tag
+      uses: actions/github-script@v4
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const tag = '${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}';
+          const ref = process.env.GITHUB_REF;
+          const sha = process.env.GITHUB_SHA;
+          const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
+          octokit.git.createRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: `refs/tags/${tag}`,
+            sha: sha
+          });
+          console.log(`Created tag ${tag} for ref ${ref}`);
