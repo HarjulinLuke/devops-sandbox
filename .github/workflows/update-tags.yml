@@ -1,5 +1,5 @@
 name: 'CI'
-run-name: 'Build #${{ github.run_number }} - PR: ${{ github.event.PR.message }}'
+run-name: 'Build #${{ github.run_number }} - PR: ${{ github.event.pull_request.title }}'
 
 on:
   pull_request:
