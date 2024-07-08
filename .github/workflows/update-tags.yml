@@ -1,5 +1,5 @@
-name: 'Update Tags'
-run-name: 'PR: ${{ github.event.pull_request.title }}'
+name: 'Git Tag Update'
+run-name: ':bookmark:New Tag from PR #${{ github.event.pull_request.number }} - Branch: ${{ github.event.pull_request.head.ref }}'
 
 on:
   pull_request:
@@ -96,8 +96,9 @@ jobs:
         if ($null -eq (git branch --list ${{ github.event.pull_request.head.ref }})) {
           git branch ${{ github.event.pull_request.head.ref }}
         }
-        git checkout ${{ github.event.pull_request.head.ref }}
-
+        else {
+          git checkout ${{ github.event.pull_request.head.ref }}
+        }
     - name: 'Install GitVersion'
       uses: gittools/actions/gitversion/setup@v0
       with:
@@ -112,15 +113,20 @@ jobs:
         useConfigFile: 'true'
         additionalArguments: '-b ${{ github.event.pull_request.head.ref }} /overrideconfig tag-prefix=${{ matrix.element.name }}-v'
 
-    - name: Output element
+    - name: Output to Job Summary
       id: output-element
       shell: pwsh
       run: |
-        Write-Host "element=${{ matrix.element.name }}"
-        Write-Host "element path=${{ toJson(matrix.element.path) }}"
-        Write-Host "new version=${{ steps.gitversion.outputs.majorMinorPatch }}"
+        Write-Host "New Tag: ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}"
+        Write-Host "Element: ${{ matrix.element.name }}"
+        Write-Host "Element paths: ${{ toJson(matrix.element.path) }}"
+        Write-Host "New version: ${{ steps.gitversion.outputs.majorMinorPatch }}"
+        "# :bookmark: New Tag: ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Element: ${{ matrix.element.name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## New Version: ${{ steps.gitversion.outputs.majorMinorPatch }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Branch: ${{ github.event.pull_request.head.ref }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
-    - name: Update tag
+    - name: Push New Git Tag
       shell: 'pwsh'
       run: |
         git config user.email "github-actions[bot]@users.noreply.github.com"
