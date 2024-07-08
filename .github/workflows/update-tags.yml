@@ -85,6 +85,14 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+    - name: 'Create head branch if deleted'
+      shell: pwsh
+      run: |
+        if ($null -eq (git branch --list -r ${{ github.event.pull_request.head.ref }})) {
+          git branch ${{ github.event.pull_request.head.ref }}
+          git checkout -b ${{ github.event.pull_request.head.ref }}
+        }
+
     - name: 'Install GitVersion'
       uses: gittools/actions/gitversion/setup@v0
       with:
