@@ -78,7 +78,7 @@ jobs:
   TestGitVersion:
     name: 'Test Git Version - ${{ matrix.element.name }}'
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true && needs.GetChangedElements.outputs.elementsToBuild
     needs: GetChangedElements
     strategy:
       fail-fast: false
