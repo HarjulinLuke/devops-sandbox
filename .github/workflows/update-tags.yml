@@ -1,14 +1,14 @@
 name: 'Git Tag Update'
-run-name: ':bookmark:New Tag from PR #${{ github.event.pull_request.number }} - Branch: ${{ github.event.pull_request.head.ref }}'
+run-name: 'PR Closure #${{ github.event.pull_request.number }}'
 
 on:
   pull_request:
     types: [closed]
     branches:
-      - main
+    - main
   push:
     branches:
-      - release/*
+    - release/*
 
 permissions:
   id-token: write
@@ -66,6 +66,11 @@ jobs:
         }
         if ($elementsToBuild.Count -eq 1) {
           $elementsToBuildJson = "[$($elementsToBuild | ConvertTo-Json -Compress)]"
+        }
+        elseif ($elementsToBuild.Count -eq 0) {
+          "# :zap: NO NEW TAGS `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "## No files changed matched the paths defined in the configuration file. `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "All files changed: ${{ steps.changed-files.outputs.all_changed_files }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         }
         else {
           $elementsToBuildJson = $elementsToBuild | ConvertTo-Json -Compress
