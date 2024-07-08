@@ -95,9 +95,8 @@ jobs:
         git branch --list -r
         if ($null -eq (git branch --list ${{ github.event.pull_request.head.ref }})) {
           git branch ${{ github.event.pull_request.head.ref }}
-          git checkout -b ${{ github.event.pull_request.head.ref }}
         }
-        git checkout -b ${{ github.event.pull_request.head.ref }}
+        git checkout ${{ github.event.pull_request.head.ref }}
 
     - name: 'Install GitVersion'
       uses: gittools/actions/gitversion/setup@v0
