@@ -6,9 +6,6 @@ on:
     types: [closed]
     branches:
     - main
-  push:
-    branches:
-    - release/*
 
 permissions:
   id-token: write
@@ -61,7 +58,7 @@ jobs:
         foreach ($element in $elements) {
           Write-Host "$($element.name) changed:" $allOutputs."$($element.name)_any_changed"
           if ($allOutputs."$($element.name)_any_changed" -eq "true") {
-            $elementsToBuild += $element
+            $elementsToBuild += $element.name
           }
         }
         if ($elementsToBuild.Count -eq 1) {
@@ -75,13 +72,13 @@ jobs:
         else {
           $elementsToBuildJson = $elementsToBuild | ConvertTo-Json -Compress
         }
-        Write-Host "pwsh = $($elementsToBuild.name)"
+        Write-Host "pwsh = $($elementsToBuild)"
         Write-Host "json = $elementsToBuildJson"
         "elementsToBuild=$elementsToBuildJson" >> $env:GITHUB_OUTPUT
         
 
-  TestGitVersion:
-    name: 'Test Git Version - ${{ matrix.element.name }}'
+  PushNewTags:
+    name: 'Push New Tag For ${{ matrix.element }}'
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true && needs.GetChangedElements.outputs.elementsToBuild
     needs: GetChangedElements
@@ -121,18 +118,17 @@ jobs:
       uses: gittools/actions/gitversion/execute@v0
       with:
         useConfigFile: 'true'
-        additionalArguments: '-b ${{ github.event.pull_request.head.ref }} /overrideconfig tag-prefix=${{ matrix.element.name }}-v'
+        additionalArguments: '-b ${{ github.event.pull_request.head.ref }} /overrideconfig tag-prefix=${{ matrix.element }}-v'
 
     - name: Output to Job Summary
       id: output-element
       shell: pwsh
       run: |
-        Write-Host "New Tag: ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}"
-        Write-Host "Element: ${{ matrix.element.name }}"
-        Write-Host "Element paths: ${{ toJson(matrix.element.path) }}"
+        Write-Host "New Tag: ${{ matrix.element }}-v${{ steps.gitversion.outputs.majorMinorPatch }}"
+        Write-Host "Element: ${{ matrix.element }}"
         Write-Host "New version: ${{ steps.gitversion.outputs.majorMinorPatch }}"
-        "# :bookmark: New Tag: ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-        "## Element: ${{ matrix.element.name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "# :bookmark: New Tag: ${{ matrix.element }}-v${{ steps.gitversion.outputs.majorMinorPatch }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Element: ${{ matrix.element }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## New Version: ${{ steps.gitversion.outputs.majorMinorPatch }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## Branch: ${{ github.event.pull_request.head.ref }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
@@ -141,5 +137,5 @@ jobs:
       run: |
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git config user.name "github-actions[bot]"
-        git tag -f ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}
-        git push origin -f ${{ matrix.element.name }}-v${{ steps.gitversion.outputs.majorMinorPatch }}
+        git tag -f ${{ matrix.element }}-v${{ steps.gitversion.outputs.majorMinorPatch }}
+        git push origin -f ${{ matrix.element }}-v${{ steps.gitversion.outputs.majorMinorPatch }}

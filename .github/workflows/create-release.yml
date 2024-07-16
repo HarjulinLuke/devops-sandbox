@@ -1,0 +1,71 @@
+name: 'Create/Update Release'
+run-name: 'Push to release branch'
+
+on:
+  push:
+    branches:
+    - release/*
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: read
+
+jobs:
+  CreateNewRelease:
+    name: 'Create New Release'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 'Get next release version'
+      id: get-release-tag
+      shell: pwsh
+      run: |
+        git fetch --tags
+        $currentBranch = git rev-parse --abbrev-ref HEAD
+        $releaseBranchVersion = ($currentBranch -split '/' | Select-Object -Last 1) -replace "v",""
+        $tags = git tag
+
+        # Check for a match
+        $matches = ($tags -match "^[vV]?$releaseBranchVersion([.][0-9]+)?$") -replace "v",""
+        $matchFound = $false
+
+        # Output result
+        if ($matchFound) {
+          Write-Output "A tag matching the release version $releaseBranchVersion was found."
+          # Get most recent tag for release
+          $latestTag = $matches | Sort-Object -Descending | Select-Object -First 1
+          $major,$minor,$patch = $latestTag.Split('.')
+          [int]$patch+=1
+          Write-Output "A new release will be created with a bump to the patch. New version: $major.$minor.$patch"
+          "newReleaseVersion=$major.$minor.$patch" >> $env:GITHUB_OUTPUT
+        }
+        else {
+          Write-Output "No matching tag found for $releaseBranchVersion. Creating a new release for release branch"
+
+          "newReleaseVersion=$major.$minor.$patch" >> $env:GITHUB_OUTPUT
+        }
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: 'v${{ steps.get-release-tag.outputs.newReleaseVersion }}'
+        release_name: 'v${{ steps.get-release-tag.outputs.newReleaseVersion }}'
+        draft: false
+        prerelease: false
+        body: 
+
+    - name: Output to Job Summary
+      id: output-element
+      shell: pwsh
+      run: |
+        Write-Host "New Release/Tag: v${{ steps.get-release-tag.outputs.newReleaseVersion }}"
+        "# :rocket: :bookmark: New Release/Tag: v${{ steps.get-release-tag.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Branch: ${{ github.ref_name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
