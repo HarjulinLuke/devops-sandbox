@@ -75,9 +75,9 @@ jobs:
           # Add code to get tag from commit, match specific element
           $tag = git tag --points-at $newestCommit | Select-String "$($element.name)-v*" 
           Write-Debug "Tag: $tag"
-          $tagBody+="#### Element: $($element.name) `r`n"
-          $tagBody+=" Latest Tag: $tag `r`n"
-          $tagBody+=" Latest Commit: $newestCommit `r`n`r`n"
+          $tagBody += " Element: $($element.name) `r`n"
+          $tagBody += "   Latest Tag: $tag `r`n"
+          $tagBody += "   Latest Commit: $newestCommit `r`n`r`n"
         }
         write-output "$tagBody"
         "tagBody=$tagBody" >> $env:GITHUB_OUTPUT
