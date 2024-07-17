@@ -50,6 +50,40 @@ jobs:
           "newReleaseVersion=$major.$minor.$patch" >> $env:GITHUB_OUTPUT
         }
 
+    - name: Get tags of elements
+      id: get-associated-tags
+      shell: bash
+      run: |
+        $tagBody = "### Contents: `r`n"
+        $elements = Get-Content changed-files-config.json | ConvertFrom-Json | Select-Object -ExpandProperty elements
+        foreach ($element in $elements) {
+          Write-Debug "Element: $($element.name)"
+          $newestCommit = ""
+          foreach ($path in $element.path) {
+            Write-Debug "  Path: $path"
+            $commitHash = git log --before="$(git log -n 1 --pretty=format:'%cI')" -n 1 --pretty=format:"%H" -- $path
+            $childCommit = git log --all --pretty=format:'%H %P' | Select-String " $commitHash" | ForEach-Object { $_.ToString().Split(' ')[0] }
+            if ($newestCommit) {
+              if (git merge-base --is-ancestor $newestCommit $childCommit) {
+                $newestCommit = $childCommit
+              }
+            }
+            else {
+              $newestCommit = $childCommit
+            }
+          }
+          # Add code to get tag from commit, match specific element
+          $tag = git tag --points-at $newestCommit | Select-String "$($element.name)-v*" 
+          Write-Debug "Tag: $tag"
+          $tagBody+="#### Element: $($element.name) `r`n"
+          $tagBody+=" Latest Tag: $tag `r`n"
+          $tagBody+=" Latest Commit: $newestCommit `r`n`r`n"
+        }
+        write-output "$tagBody"
+        "tagBody=$tagBody" >> $env:GITHUB_OUTPUT
+        
+
+        
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -60,7 +94,7 @@ jobs:
         release_name: 'v${{ steps.get-release-tag.outputs.newReleaseVersion }}'
         draft: false
         prerelease: false
-        body: 
+        body: ${{ steps.get-associated-tags.outputs.tagBody }}
 
     - name: Output to Job Summary
       id: output-element
@@ -69,3 +103,4 @@ jobs:
         Write-Host "New Release/Tag: v${{ steps.get-release-tag.outputs.newReleaseVersion }}"
         "# :rocket: :bookmark: New Release/Tag: v${{ steps.get-release-tag.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## Branch: ${{ github.ref_name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Release Notes: `r`n ${{ steps.get-associated-tags.outputs.tagBody }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
