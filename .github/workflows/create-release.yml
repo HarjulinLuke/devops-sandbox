@@ -52,7 +52,7 @@ jobs:
 
     - name: Get tags of elements
       id: get-associated-tags
-      shell: bash
+      shell: pwsh
       run: |
         $tagBody = "### Contents: `r`n"
         $elements = Get-Content changed-files-config.json | ConvertFrom-Json | Select-Object -ExpandProperty elements
