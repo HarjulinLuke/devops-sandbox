@@ -46,7 +46,21 @@ jobs:
         }
         else {
           Write-Output "No matching tag found for $releaseBranchVersion. Creating a new release for release branch..."
-          "newReleaseVersion=$releaseBranchVersion" >> $env:GITHUB_OUTPUT
+          $newTag = ""
+          if ("$releaseBranchVersion" -match "^[0-9]+[.][0-9]+[.][0-9]+$") {
+            $newTag = "$releaseBranchVersion"
+          }
+          elseif ("$releaseBranchVersion" -match "^[0-9]+[.][0-9]+$") {
+            $newTag = "$releaseBranchVersion.0"
+          }
+          elseif ("$releaseBranchVersion" -match "^[0-9]+$") {
+            $newTag = "$releaseBranchVersion.0.0"
+          }
+          else {
+            Write-Error "Invalid version format. Please use the format Major.Minor.Patch"
+            exit 1
+          }
+          "newReleaseVersion=$newTag" >> $env:GITHUB_OUTPUT
         }
 
     - name: Get tags of elements
