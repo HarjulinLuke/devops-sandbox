@@ -169,10 +169,10 @@ jobs:
       shell: pwsh
       run: |
         $elementsTags = '${{ needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags }}' | ConvertFrom-Json
-        $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}"
+        $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}" }
         Write-Host "Previous Tag Without Prefix for ${{ matrix.element }}: $($element.tagWithoutPrefix)"
         Write-Host "Commit for ${{ matrix.element }}: $($element.commit)"
-        $major,$minor,$patch = $latestTag.Split('.')
+        $major,$minor,$patch = $($element.tagWithoutPrefix).Split('.')
         [int]$patch+=1
         Write-Host "New version: $major.$minor.$patch"
         "newVersion=$major.$minor.$patch" >> $env:GITHUB_OUTPUT

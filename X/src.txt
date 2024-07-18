@@ -3,3 +3,4 @@ print("Hello, world!")
 # New feature F
 # Hotfix A
 # Hotfix B
+# Hotfix C
