@@ -103,7 +103,7 @@ jobs:
           foreach ($path in $element.path) {
             Write-Debug "  Path: $path"
             $commitHash = git log --before="$(git log -n 1 --pretty=format:'%cI')" -n 1 --pretty=format:"%H" -- $path
-            if ($commitHash -eq git rev-parse HEAD) {
+            if ($commitHash -eq (git rev-parse HEAD)) {
               if (git tag --points-at $commitHash | Select-String "$($element.name)-v*") {
                 Write-Output "Head points to a tag for $($element.name)"
                 $newestCommit = $commitHash
