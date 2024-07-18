@@ -1,5 +1,5 @@
 name: 'Fetches changed elements'
-desciption: 'Fetches the elements that have changed'
+description: 'Fetches the elements that have changed'
 
 inputs:
   changed-files-config:
@@ -9,7 +9,7 @@ inputs:
 
 outputs:
   elementsChanged: 
-    desciption: 'The elements that have changed'
+    description: 'The elements that have changed'
     value: ${{ steps.elements-changed-output.outputs.elementsChanged }}
 
 runs:
