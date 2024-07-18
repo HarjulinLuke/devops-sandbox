@@ -30,17 +30,14 @@ jobs:
       id: get-parent-branch
       shell: pwsh
       run: |
-        $currentBranch = git branch --show-current
+        $currentCommit = git rev-parse HEAD
         # Get all branches that contain the HEAD commit, excluding the current branch, and select the first one
-        $parentBranch = git for-each-ref --contains HEAD --format '%(refname:short)' refs/heads |
-                      Where-Object { $_ -notmatch $currentBranch } |
-                      Select-Object -First 1
+        $branchesPointingToCommit = (git branch --points-at $commitHash) | ForEachObject { $_.Trim("*", " ") }
 
-        Write-Output "Parent Branch: $parentBranch"
-        $createNewElementTags = $parentBranch -like "hotfix/*"
+        Write-Output "Branches Pointing To Same Commit: $branchesPointingToCommit"
+        $createNewElementTags = !($branchesPointingToCommit -contains "main")
         Write-Output "Create New Element Tags: $createNewElementTags"
         "createNewElementTags=$createNewElementTags" >> $env:GITHUB_OUTPUT
-        "parentBranch=$parentBranch" >> $env:GITHUB_OUTPUT
 
     - name: Output elements to run CI for
       id: elements-changed-output
