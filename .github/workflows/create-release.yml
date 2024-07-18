@@ -117,15 +117,15 @@ jobs:
               }              
             }
             else {
-              $childCommit = git log --all --pretty=format:'%H %P' | Select-String " $commitHash" | ForEach-Object { $_.ToString().Split(' ')[0] }
+              # $childCommit = git log --all --pretty=format:'%H %P' | Select-String " $commitHash" | ForEach-Object { $_.ToString().Split(' ')[0] }
               if ($newestCommit) {
-                git merge-base --is-ancestor $newestCommit $childCommit
+                git merge-base --is-ancestor $newestCommit $commitHash
                 if ($LASTEXITCODE -eq 0) {
-                  $newestCommit = $childCommit
+                  $newestCommit = $commitHash
                 }
               }
               else {
-                $newestCommit = $childCommit
+                $newestCommit = $commitHash
               }
             }
           }
