@@ -31,7 +31,8 @@ jobs:
       shell: pwsh
       run: |
         $currentCommit = git rev-parse HEAD
-        # Get all branches that contain the HEAD commit, excluding the current branch, and select the first one
+        Write-Output "Current Commit: $currentCommit"
+        # Get all branches that point to the HEAD commit
         $branchesPointingToCommit = (git branch --points-at $currentCommit) | ForEach-Object { $_.Trim("*", " ") }
 
         Write-Output "Branches Pointing To Same Commit: $branchesPointingToCommit"
