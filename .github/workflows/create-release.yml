@@ -30,17 +30,14 @@ jobs:
       id: get-parent-branch
       shell: pwsh
       run: |
-        $currentBranch = git branch --show-current
+        $currentCommit = git rev-parse HEAD
         # Get all branches that contain the HEAD commit, excluding the current branch, and select the first one
-        $parentBranch = git for-each-ref --contains HEAD --format '%(refname:short)' refs/heads |
-                      Where-Object { $_ -notmatch $currentBranch } |
-                      Select-Object -First 1
+        $branchesPointingToCommit = (git branch --points-at $currentCommit) | ForEach-Object { $_.Trim("*", " ") }
 
-        Write-Output "Parent Branch: $parentBranch"
-        $createNewElementTags = $parentBranch -like "hotfix/*"
+        Write-Output "Branches Pointing To Same Commit: $branchesPointingToCommit"
+        $createNewElementTags = !($branchesPointingToCommit -contains "main")
         Write-Output "Create New Element Tags: $createNewElementTags"
         "createNewElementTags=$createNewElementTags" >> $env:GITHUB_OUTPUT
-        "parentBranch=$parentBranch" >> $env:GITHUB_OUTPUT
 
     - name: Output elements to run CI for
       id: elements-changed-output
@@ -129,7 +126,7 @@ jobs:
               }
             }
           }
-          $tag = git tag --points-at $newestCommit | Select-String "$($element.name)-v*"
+          $tag = (git tag --points-at $newestCommit | Select-String "$($element.name)-v*").Line
           Write-Debug "Tag: $tag"
           $elementsTags += @{
             name = $element.name
@@ -171,11 +168,11 @@ jobs:
       id: gitversion
       shell: pwsh
       run: |
-        $elementsTags = '${{ needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags }}' | ConvertFrom-Json
-        $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}"
+        $elementsTags = '${{ toJson(needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags) }}' | ConvertFrom-Json
+        $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}" }
         Write-Host "Previous Tag Without Prefix for ${{ matrix.element }}: $($element.tagWithoutPrefix)"
         Write-Host "Commit for ${{ matrix.element }}: $($element.commit)"
-        $major,$minor,$patch = $latestTag.Split('.')
+        $major,$minor,$patch = $($element.tagWithoutPrefix).Split('.')
         [int]$patch+=1
         Write-Host "New version: $major.$minor.$patch"
         "newVersion=$major.$minor.$patch" >> $env:GITHUB_OUTPUT
@@ -220,4 +217,4 @@ jobs:
         Write-Host "New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }}"
         "# :rocket: :bookmark: New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## Release Branch: ${{ github.ref_name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-        "## Release Notes: `r`n $(Get-Content tagBody.txt)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Release Notes: `r`n $(Get-Content tagBody/tagBody.txt)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
