@@ -32,7 +32,7 @@ jobs:
       run: |
         $currentCommit = git rev-parse HEAD
         # Get all branches that contain the HEAD commit, excluding the current branch, and select the first one
-        $branchesPointingToCommit = (git branch --points-at $commitHash) | ForEach-Object { $_.Trim("*", " ") }
+        $branchesPointingToCommit = (git branch --points-at $currentCommit) | ForEach-Object { $_.Trim("*", " ") }
 
         Write-Output "Branches Pointing To Same Commit: $branchesPointingToCommit"
         $createNewElementTags = !($branchesPointingToCommit -contains "main")
