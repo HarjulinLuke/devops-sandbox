@@ -129,7 +129,7 @@ jobs:
               }
             }
           }
-          $tag = git tag --points-at $newestCommit | Select-String "$($element.name)-v*"
+          $tag = (git tag --points-at $newestCommit | Select-String "$($element.name)-v*").Line
           Write-Debug "Tag: $tag"
           $elementsTags += @{
             name = $element.name
