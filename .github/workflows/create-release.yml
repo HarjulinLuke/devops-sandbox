@@ -30,13 +30,7 @@ jobs:
       id: get-parent-branch
       shell: pwsh
       run: |
-        $currentCommit = git rev-parse HEAD
-        Write-Output "Current Commit: $currentCommit"
-        # Get all branches that point to the HEAD commit
-        $branchesPointingToCommit = (git branch --points-at $currentCommit) | ForEach-Object { $_.Trim("*", " ") }
-
-        Write-Output "Branches Pointing To Same Commit: $branchesPointingToCommit"
-        $createNewElementTags = !($branchesPointingToCommit -contains "main")
+        $createNewElementTags = (git rev-list --count main..HEAD) -gt 0
         Write-Output "Create New Element Tags: $createNewElementTags"
         "createNewElementTags=$createNewElementTags" >> $env:GITHUB_OUTPUT
 
