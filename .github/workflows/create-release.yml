@@ -30,7 +30,8 @@ jobs:
       id: get-parent-branch
       shell: pwsh
       run: |
-        $createNewElementTags = (git rev-list --count main..HEAD) -gt 0
+        git fetch
+        $createNewElementTags = (git rev-list --count ${{ github.event.repository.default_branch }}..HEAD) -gt 0
         Write-Output "Create New Element Tags: $createNewElementTags"
         "createNewElementTags=$createNewElementTags" >> $env:GITHUB_OUTPUT
 
