@@ -1,0 +1,33 @@
+name: Hotfix Merge Validation
+
+on:
+  pull_request:
+    branches:
+      - 'release/*'
+
+jobs:
+  check-hotfix-merge-status:
+    name: Check Hotfix Merge to Main Status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessary to fetch all history for branches and tags
+
+      - name: Check if hotfix is merged into main
+        id: check-merge
+        run: |
+          $hotfixCommit = git rev-parse HEAD
+          $mainBranch = "main"
+
+          # Check if the current hotfix commit is a parent of main
+          if (git merge-base --is-ancestor $hotfixCommit $mainBranch) {
+            Write-Host "The hotfix commit is a parent of main."
+            "hotfix_merged_into_main=true" >> $env:GITHUB_OUTPUT
+          } 
+          else {
+            Write-Host "The hotfix commit is NOT a parent of main. Hotfix must be merged into main before merging into release/*."
+            "hotfix_merged_into_main=false" >> $env:GITHUB_OUTPUT
+            exit 1 # Fail the job if the hotfix is not merged into main
+          }
