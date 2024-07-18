@@ -21,15 +21,16 @@ jobs:
         shell: pwsh
         run: |
           $hotfixCommit = git rev-parse HEAD
-          $mainBranch = "main"
-
+          $mainBranchCommit = git rev-parse origin/main
+          Write-Host "Hotfix commit: $hotfixCommit"
+          Write-Host "Main branch commit: $mainBranchCommit"
           # Check if the current hotfix commit is a parent of main
-          if (git merge-base --is-ancestor $hotfixCommit $mainBranch) {
+          git merge-base --is-ancestor $hotfixCommit $mainBranchCommit
+          if ($LASTEXITCODE -eq 0) {
             Write-Host "The hotfix commit is a parent of main."
             "hotfix_merged_into_main=true" >> $env:GITHUB_OUTPUT
           } 
           else {
             Write-Host "The hotfix commit is NOT a parent of main. Hotfix must be merged into main before merging into release/*."
             "hotfix_merged_into_main=false" >> $env:GITHUB_OUTPUT
-            exit 1 # Fail the job if the hotfix is not merged into main
           }
