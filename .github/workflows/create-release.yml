@@ -116,7 +116,7 @@ jobs:
                 $newestCommit = (git log --before="$(git log -n 1 --pretty=format:'%cI')" -n 2 --pretty=format:"%H" -- $path)[1]
               }              
             }
-            else 
+            else {
               $childCommit = git log --all --pretty=format:'%H %P' | Select-String " $commitHash" | ForEach-Object { $_.ToString().Split(' ')[0] }
               if ($newestCommit) {
                 git merge-base --is-ancestor $newestCommit $childCommit
