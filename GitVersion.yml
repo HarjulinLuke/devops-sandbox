@@ -56,3 +56,14 @@ branches:
     is-release-branch: false
     is-mainline: true
     pre-release-weight: 5500
+  release:
+    regex: ^release?[/-]
+    source-branches: []
+    tag: useBranchName
+    increment: None
+    prevent-increment-of-merged-branch-version: true
+    track-merge-target: false
+    tracks-release-branches: true
+    is-release-branch: false
+    is-mainline: false
+    pre-release-weight: 6000
