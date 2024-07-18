@@ -33,7 +33,7 @@ jobs:
   PushNewTags:
     name: 'Push New Tag For ${{ matrix.element }}'
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && needs.GetChangedElements.outputs.elementsToBuild
+    if: github.event.pull_request.merged == true && needs.GetChangedElements.outputs.elementsChanged
     needs: GetChangedElements
     strategy:
       fail-fast: false
