@@ -25,7 +25,8 @@ branches:
     is-mainline: false
     pre-release-weight: 0
   hotfix:
-    regex: ^hotfix?[/-] | ^bugfix?[/-] | ^fix?[/-]
+    regex: ^hotfix?[/-]
+    source-branches: []
     tag: useBranchName
     increment: Patch
     prevent-increment-of-merged-branch-version: true
