@@ -16,7 +16,7 @@ jobs:
   GetChangedElements:
     name: 'Get Changed Elements'
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true && !startsWith(github.event.pull_request.head.ref, 'release/')
     outputs:
       elementsChanged: ${{ steps.elements-changed-output.outputs.elementsChanged }}
     steps:
