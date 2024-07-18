@@ -220,4 +220,4 @@ jobs:
         Write-Host "New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }}"
         "# :rocket: :bookmark: New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## Release Branch: ${{ github.ref_name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-        "## Release Notes: `r`n $(Get-Content tagBody.txt)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Release Notes: `r`n $(Get-Content tagBody/tagBody.txt)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
