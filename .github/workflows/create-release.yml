@@ -12,15 +12,24 @@ permissions:
   pull-requests: read
 
 jobs:
-  CreateNewRelease:
-    name: 'Create New Release'
+  FetchReleaseVersionAndChangedFiles:
+    name: 'Fetch Release Version And Changed Files'
     runs-on: ubuntu-latest
+    outputs:
+      elementsChanged: ${{ steps.elements-changed-output.outputs.elementsChanged }}
+      elementsTags: ${{ steps.get-associated-tags.outputs.elementsTags }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
+    - name: Output elements to run CI for
+      id: elements-changed-output
+      uses: ./.github/actions/get-changed-elements
+      with:
+        changed-files-config: 'changed-files-config.json'
+        
     - name: 'Get next release version'
       id: get-release-tag
       shell: pwsh
@@ -69,6 +78,7 @@ jobs:
       run: |
         $tagBody = "### Contents: `r`n"
         $elements = Get-Content changed-files-config.json | ConvertFrom-Json | Select-Object -ExpandProperty elements
+        $elementsTags = @()
         foreach ($element in $elements) {
           Write-Debug "Element: $($element.name)"
           $newestCommit = ""
@@ -86,17 +96,65 @@ jobs:
               $newestCommit = $childCommit
             }
           }
-          # Add code to get tag from commit, match specific element
-          $tag = git tag --points-at $newestCommit | Select-String "$($element.name)-v*" 
+          $tag = git tag --points-at $newestCommit | Select-String "$($element.name)-v*"
           Write-Debug "Tag: $tag"
+          $elementsTags += @{
+            name = $element.name
+            tag = $tag
+            tagWithoutPrefix = $tag -replace "$($element.name)-v",""
+            commit = $newestCommit
+          }
           $tagBody += "#### Element: $($element.name) `r`n"
           $tagBody += " Latest Tag: $tag `r`n"
           $tagBody += " Latest Commit: $newestCommit `r`n`r`n"
         }
+        Write-Output ($elementsTags | ConvertTo-Json)
+        "elementsTags=$($elementsTags | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
         write-output $tagBody >> "tagBody.txt"
         
+  PushNewTags:
+    name: 'Push New Tag For ${{ matrix.element }}'
+    runs-on: ubuntu-latest
+    needs: FetchReleaseVersionAndChangedFiles
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        element: ${{fromJson(needs.FetchReleaseVersionAndChangedFiles.outputs.elementsChanged)}}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: 'Calculate new tag for ${{ matrix.element }}'
+      id: gitversion
+      shell: pwsh
+      run: |
+        $elementsTags = '${{ needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags }}' | ConvertFrom-Json
+        $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}"
+        Write-Host "Previous Tag Without Prefix for ${{ matrix.element }}: $($element.tagWithoutPrefix)"
+        Write-Host "Commit for ${{ matrix.element }}: $($element.commit)"
+        $major,$minor,$patch = $latestTag.Split('.')
+        [int]$patch+=1
+        Write-Host "New version: $major.$minor.$patch"
+        "newVersion=$major.$minor.$patch" >> $env:GITHUB_OUTPUT
+    
+    - name: 'Create new tag for ${{ matrix.element }}'
+      shell: pwsh
+      run: |
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config user.name "github-actions[bot]"
+        git tag -f v${{ steps.gitversion.outputs.newVersion }}
+        git push origin -f v${{ steps.gitversion.outputs.newVersion }}
 
-        
+
+  CreateRelease:
+    name: 'Create Release'
+    runs-on: ubuntu-latest
+    needs: PushNewTags
+    if: always()
+    steps:    
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1

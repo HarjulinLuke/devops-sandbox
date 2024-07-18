@@ -6,7 +6,6 @@ on:
     types: [closed]
     branches:
     - main
-    - release/**
 
 permissions:
   id-token: write
@@ -19,63 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     outputs:
-      elementsToBuild: ${{ steps.elements-to-run-ci.outputs.elementsToBuild }}
+      elementsChanged: ${{ steps.elements-changed-output.outputs.elementsChanged }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Create changed files src file
-      id: create-changed-files-src-file
-      shell: pwsh
-      run: |
-        $elements = (Get-Content changed-files-config.json | ConvertFrom-Json).elements
-        New-Item changed-files-config.yaml
-        foreach ($element in $elements) {
-          Add-Content -Path .\changed-files-config.yaml -Value "$($element.name):"
-          foreach ($path in $element.path) {
-            Add-Content -Path .\changed-files-config.yaml -Value "- $path"
-          }
-        }
-        $elementsCompressed = $elements | ConvertTo-Json -Compress
-        Write-Host "pwsh = $($elements.name)"
-        Write-Host "json = $elementsCompressed"
-        "elements=$elementsCompressed" >> $env:GITHUB_OUTPUT
-        
-    - name: Evaluate Changed Files
-      uses: tj-actions/changed-files@v44
-      id: changed-files
-      with:
-        dir_names: true
-        files_yaml_from_source_file: changed-files-config.yaml
-
     - name: Output elements to run CI for
-      id: elements-to-run-ci
-      shell: pwsh
-      run: |
-        $elements = ('${{ steps.create-changed-files-src-file.outputs.elements }}' | ConvertFrom-Json)
-        Write-Host "all elements from config = $($elements.name)"
-        $allOutputs = ('${{ toJson(steps.changed-files.outputs) }}' | ConvertFrom-Json)
-        $elementsToBuild = @()
-        foreach ($element in $elements) {
-          Write-Host "$($element.name) changed:" $allOutputs."$($element.name)_any_changed"
-          if ($allOutputs."$($element.name)_any_changed" -eq "true") {
-            $elementsToBuild += $element.name
-          }
-        }
-        if ($elementsToBuild.Count -eq 1) {
-          $elementsToBuildJson = "[$($elementsToBuild | ConvertTo-Json -Compress)]"
-        }
-        elseif ($elementsToBuild.Count -eq 0) {
-          "# :zap: NO NEW TAGS `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "## No files changed matched the paths defined in the configuration file. `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "Number of files changed: ${{ github.event.pull_request.changed_files }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-        }
-        else {
-          $elementsToBuildJson = $elementsToBuild | ConvertTo-Json -Compress
-        }
-        Write-Host "pwsh = $($elementsToBuild)"
-        Write-Host "json = $elementsToBuildJson"
-        "elementsToBuild=$elementsToBuildJson" >> $env:GITHUB_OUTPUT
+      id: elements-changed-output
+      uses: ./.github/actions/get-changed-elements
+      with:
+        changed-files-config: 'changed-files-config.json'
         
 
   PushNewTags:
@@ -87,7 +39,7 @@ jobs:
       fail-fast: false
       max-parallel: 5
       matrix:
-        element: ${{fromJson(needs.GetChangedElements.outputs.elementsToBuild)}}
+        element: ${{fromJson(needs.GetChangedElements.outputs.elementsChanged)}}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
