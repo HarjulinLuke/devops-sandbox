@@ -17,6 +17,7 @@ jobs:
 
       - name: Check if hotfix is merged into main
         id: check-merge
+        shell: pwsh
         run: |
           $hotfixCommit = git rev-parse HEAD
           $mainBranch = "main"
