@@ -168,7 +168,7 @@ jobs:
       id: gitversion
       shell: pwsh
       run: |
-        $elementsTags = '${{ needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags }}' | ConvertFrom-Json
+        $elementsTags = '${{ toJson(needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags) }}' | ConvertFrom-Json
         $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}" }
         Write-Host "Previous Tag Without Prefix for ${{ matrix.element }}: $($element.tagWithoutPrefix)"
         Write-Host "Commit for ${{ matrix.element }}: $($element.commit)"
