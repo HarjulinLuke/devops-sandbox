@@ -8,12 +8,13 @@ inputs:
     default: 'changed-files-config.json'
 
 outputs:
-  elementsChanged: ${{ steps.elements-changed-output.outputs.elementsChanged }}
+  elementsChanged: 
+    desciption: 'The elements that have changed'
+    value: ${{ steps.elements-changed-output.outputs.elementsChanged }}
 
 runs:
   using: 'composite'
   steps:
-
   - name: Create changed files src file
     id: create-changed-files-src-file
     shell: pwsh
