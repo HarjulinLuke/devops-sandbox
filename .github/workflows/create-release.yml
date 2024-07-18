@@ -91,6 +91,7 @@ jobs:
       run: |
         $tagBody = "### Contents: `r`n"
         $elements = Get-Content changed-files-config.json | ConvertFrom-Json | Select-Object -ExpandProperty elements
+        $elementsChanged = '${{ steps.elements-changed-output.outputs.elementsChanged }}' | ConvertFrom-Json
         $elementsTags = @()
         foreach ($element in $elements) {
           Write-Debug "Element: $($element.name)"
@@ -126,10 +127,16 @@ jobs:
           }
           $tag = (git tag --points-at $newestCommit | Select-String "$($element.name)-v*").Line
           Write-Debug "Tag: $tag"
+          if ($elementsChanged -contains $element.name) {
+            $major,$minor,$patch = ($tag -replace "$($element.name)-v","").Split('.')
+            [int]$patch+=1
+            $tag = "$($element.name)-v$major.$minor.$patch"
+            $tagWithoutPrefix = "$major.$minor.$patch"
+          }
           $elementsTags += @{
             name = $element.name
             tag = $tag
-            tagWithoutPrefix = $tag -replace "$($element.name)-v",""
+            tagWithoutPrefix = $tagWithoutPrefix
             commit = $newestCommit
           }
           $tagBody += "#### Element: $($element.name) `r`n"
@@ -168,20 +175,17 @@ jobs:
       run: |
         $elementsTags = '${{ toJson(needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags) }}' | ConvertFrom-Json | ConvertFrom-Json
         $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}" }
-        Write-Host "Previous Tag Without Prefix for ${{ matrix.element }}: $($element.tagWithoutPrefix)"
-        Write-Host "Commit for ${{ matrix.element }}: $($element.commit)"
-        $major,$minor,$patch = $($element.tagWithoutPrefix).Split('.')
-        [int]$patch+=1
-        Write-Host "New version: $major.$minor.$patch"
-        "newVersion=$major.$minor.$patch" >> $env:GITHUB_OUTPUT
+        Write-Host ($element | ConvertTo-Json)
+        Write-Host "New version: $($element.tag)"
+        "newVersion=$($element.tag)" >> $env:GITHUB_OUTPUT
     
     - name: 'Create new tag for ${{ matrix.element }}'
       shell: pwsh
       run: |
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git config user.name "github-actions[bot]"
-        git tag -f ${{ matrix.element }}-v${{ steps.gitversion.outputs.newVersion }}
-        git push origin -f ${{ matrix.element }}-v${{ steps.gitversion.outputs.newVersion }}
+        git tag -f ${{ steps.gitversion.outputs.newVersion }}
+        git push origin -f ${{ steps.gitversion.outputs.newVersion }}
 
 
   CreateRelease:
@@ -215,4 +219,5 @@ jobs:
         Write-Host "New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }}"
         "# :rocket: :bookmark: New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## Release Branch: ${{ github.ref_name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-        "## Release Notes: `r`n $(Get-Content tagBody/tagBody.txt)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        $tagBodyContent = Get-Content tagBody/tagBody.txt -Raw
+        "## Release Notes: `r`n $tagBodyContent | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
