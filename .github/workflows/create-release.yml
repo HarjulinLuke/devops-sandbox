@@ -220,4 +220,4 @@ jobs:
         "# :rocket: :bookmark: New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## Release Branch: ${{ github.ref_name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         $tagBodyContent = Get-Content tagBody/tagBody.txt -Raw
-        "## Release Notes: `r`n $tagBodyContent | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        "## Release Notes: `r`n $tagBodyContent" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
