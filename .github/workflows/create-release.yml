@@ -127,6 +127,7 @@ jobs:
           }
           $tag = (git tag --points-at $newestCommit | Select-String "$($element.name)-v*").Line
           Write-Debug "Tag: $tag"
+          $tagWithoutPrefix = $tag -replace "$($element.name)-v",""
           if ($elementsChanged -contains $element.name) {
             $major,$minor,$patch = ($tag -replace "$($element.name)-v","").Split('.')
             [int]$patch+=1
