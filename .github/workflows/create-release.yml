@@ -12,14 +12,14 @@ permissions:
   pull-requests: read
 
 jobs:
-  FetchReleaseVersionAndChangedFiles:
+  FetchNewVersionsAndElements:
     name: 'Fetch Release Version And Changed Files'
     runs-on: ubuntu-latest
     outputs:
       newReleaseVersion: ${{ steps.get-release-tag.outputs.newReleaseVersion }}
       elementsChanged: ${{ steps.elements-changed-output.outputs.elementsChanged }}
       elementsTags: ${{ steps.get-associated-tags.outputs.elementsTags }}
-      createNewElementTags: ${{ steps.get-parent-branch.outputs.createNewElementTags }}
+      parentIsHotfix: ${{ steps.get-parent-branch.outputs.parentIsHotfix }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -33,9 +33,9 @@ jobs:
         git fetch -v
         git checkout main
         git checkout ${{ github.ref_name }}
-        $createNewElementTags = (git rev-list --count ${{ github.event.repository.default_branch }}..HEAD) -gt 0
-        Write-Output "Create New Element Tags: $createNewElementTags"
-        "createNewElementTags=$createNewElementTags" >> $env:GITHUB_OUTPUT
+        $parentIsHotfix = (git rev-list --count ${{ github.event.repository.default_branch }}..HEAD) -gt 0
+        Write-Output "Create New Element Tags: $parentIsHotfix"
+        "parentIsHotfix=$parentIsHotfix" >> $env:GITHUB_OUTPUT
 
     - name: Output elements to run CI for
       id: elements-changed-output
@@ -157,13 +157,13 @@ jobs:
   PushNewTags:
     name: 'Push New Tag For ${{ matrix.element }}'
     runs-on: ubuntu-latest
-    needs: FetchReleaseVersionAndChangedFiles
-    if: needs.FetchReleaseVersionAndChangedFiles.outputs.createNewElementTags == 'true' && needs.FetchReleaseVersionAndChangedFiles.outputs.elementsChanged
+    needs: FetchNewVersionsAndElements
+    if: needs.FetchNewVersionsAndElements.outputs.parentIsHotfix == 'true' && needs.FetchNewVersionsAndElements.outputs.elementsChanged
     strategy:
       fail-fast: false
       max-parallel: 5
       matrix:
-        element: ${{fromJson(needs.FetchReleaseVersionAndChangedFiles.outputs.elementsChanged)}}
+        element: ${{fromJson(needs.FetchNewVersionsAndElements.outputs.elementsChanged)}}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -174,7 +174,7 @@ jobs:
       id: gitversion
       shell: pwsh
       run: |
-        $elementsTags = '${{ toJson(needs.FetchReleaseVersionAndChangedFiles.outputs.elementsTags) }}' | ConvertFrom-Json | ConvertFrom-Json
+        $elementsTags = '${{ toJson(needs.FetchNewVersionsAndElements.outputs.elementsTags) }}' | ConvertFrom-Json | ConvertFrom-Json
         $element = $elementsTags | Where-Object { $_.name -eq "${{ matrix.element }}" }
         Write-Host ($element | ConvertTo-Json)
         Write-Host "New version: $($element.tag)"
@@ -192,7 +192,7 @@ jobs:
   CreateRelease:
     name: 'Create Release'
     runs-on: ubuntu-latest
-    needs: [FetchReleaseVersionAndChangedFiles, PushNewTags]
+    needs: [FetchNewVersionsAndElements, PushNewTags]
     if: always()
     steps:
     - name: Download Tag Body Artifact
@@ -207,18 +207,30 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: 'v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }}'
-        release_name: 'v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }}'
+        tag_name: 'v${{ needs.FetchNewVersionsAndElements.outputs.newReleaseVersion }}'
+        release_name: 'v${{ needs.FetchNewVersionsAndElements.outputs.newReleaseVersion }}'
         draft: false
         prerelease: false
         body_path: tagBody/tagBody.txt
+
+    - name: Create Pull Request
+      if: ${{ needs.FetchNewVersionsAndElements.outputs.parentIsHotfix == 'true' }}
+      run: |
+        gh pr create \
+          --base ${{ github.event.repository.default_branch }} \
+          --head ${{ github.ref_name }} \
+          --title "Merging fixes from ${{ github.ref_name }} into ${{ github.event.repository.default_branch }}" \
+          --body "This PR merges the changes made to the release branch into ${{ github.event.repository.default_branch }} ."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Output to Job Summary
       id: output-element
       shell: pwsh
       run: |
-        Write-Host "New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }}"
-        "# :rocket: :bookmark: New Release/Tag: v${{ needs.FetchReleaseVersionAndChangedFiles.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        Write-Host "New Release/Tag: v${{ needs.FetchNewVersionsAndElements.outputs.newReleaseVersion }}"
+        "# :rocket: :bookmark: New Release/Tag: v${{ needs.FetchNewVersionsAndElements.outputs.newReleaseVersion }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         "## Release Branch: ${{ github.ref_name }} `r`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
         $tagBodyContent = Get-Content tagBody/tagBody.txt -Raw
+        Write-Host "Release Notes: `r`n $tagBodyContent"
         "## Release Notes: `r`n $tagBodyContent" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
