@@ -8,3 +8,7 @@ print("Hello, world!")
 # New feature H
 # New feature I
 # New feature J
+# Hotfix F
+# Hotfix G
+# Hotfix H
+# Hotfix I
