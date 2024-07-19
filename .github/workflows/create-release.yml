@@ -94,55 +94,56 @@ jobs:
         $elementsChanged = '${{ steps.elements-changed-output.outputs.elementsChanged }}' | ConvertFrom-Json
         $elementsTags = @()
         foreach ($element in $elements) {
-          Write-Debug "Element: $($element.name)"
-          $newestCommit = ""
+          Write-Output "Element: $($element.name)"
+          $latestCommit = ""
           foreach ($path in $element.path) {
-            Write-Debug "  Path: $path"
+            Write-Output "  Path: $path"
             $commitHash = git log --before="$(git log -n 1 --pretty=format:'%cI')" -n 1 --pretty=format:"%H" -- $path
             if ($commitHash -eq (git rev-parse HEAD)) {
               if (git tag --points-at $commitHash | Select-String "$($element.name)-v*") {
                 Write-Output "Head points to a tag for $($element.name)"
-                $newestCommit = $commitHash
+                $latestCommit = $commitHash
                 break
               }
               else {
                 # If the commit hash is the same as the HEAD and a tag doesn't exist for the element,
                 # then the file was modified in the last commit and needs a tag
                 # So we need to get the second latest commit to get the latest tag
-                $newestCommit = (git log --before="$(git log -n 1 --pretty=format:'%cI')" -n 2 --pretty=format:"%H" -- $path)[1]
+                $latestCommit = (git log --before="$(git log -n 1 --pretty=format:'%cI')" -n 2 --pretty=format:"%H" -- $path)[1]
               }              
             }
             else {
               # $childCommit = git log --all --pretty=format:'%H %P' | Select-String " $commitHash" | ForEach-Object { $_.ToString().Split(' ')[0] }
-              if ($newestCommit) {
-                git merge-base --is-ancestor $newestCommit $commitHash
+              if ($latestCommit) {
+                git merge-base --is-ancestor $latestCommit $commitHash
                 if ($LASTEXITCODE -eq 0) {
-                  $newestCommit = $commitHash
+                  $latestCommit = $commitHash
                 }
               }
               else {
-                $newestCommit = $commitHash
+                $latestCommit = $commitHash
               }
             }
           }
-          $tag = (git tag --points-at $newestCommit | Select-String "$($element.name)-v*").Line
-          Write-Debug "Tag: $tag"
+          $tag = (git tag --points-at $latestCommit | Select-String "$($element.name)-v*").Line
+          Write-Output "Tag: $tag"
           $tagWithoutPrefix = $tag -replace "$($element.name)-v",""
           if ($elementsChanged -contains $element.name -and '${{ steps.get-parent-branch.outputs.parentIsHotfix }}' -eq 'true') {
             $major,$minor,$patch = ($tag -replace "$($element.name)-v","").Split('.')
             [int]$patch+=1
             $tag = "$($element.name)-v$major.$minor.$patch"
             $tagWithoutPrefix = "$major.$minor.$patch"
+            $latestCommit = "${{ github.sha }}"
           }
           $elementsTags += @{
             name = $element.name
             tag = $tag
             tagWithoutPrefix = $tagWithoutPrefix
-            commit = $newestCommit
+            commit = $latestCommit
           }
           $tagBody += "#### Element: $($element.name) `r`n"
           $tagBody += " Latest Tag: $tag `r`n"
-          $tagBody += " Latest Commit: $newestCommit `r`n`r`n"
+          $tagBody += " Latest Commit: $latestCommit `r`n`r`n"
         }
         Write-Output ($elementsTags | ConvertTo-Json)
         "elementsTags=$($elementsTags | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
