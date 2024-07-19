@@ -194,8 +194,13 @@ jobs:
     name: 'Create Release'
     runs-on: ubuntu-latest
     needs: [FetchNewVersionsAndElements, PushNewTags]
-    if: always()
+    if: always() && needs.FetchNewVersionsAndElements.result == 'success'
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
     - name: Download Tag Body Artifact
       uses: actions/download-artifact@v2
       with:
