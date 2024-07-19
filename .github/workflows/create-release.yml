@@ -128,7 +128,7 @@ jobs:
           $tag = (git tag --points-at $newestCommit | Select-String "$($element.name)-v*").Line
           Write-Debug "Tag: $tag"
           $tagWithoutPrefix = $tag -replace "$($element.name)-v",""
-          if ($elementsChanged -contains $element.name -and '${{ steps.get-parent-branch.outputs.parentIsHotfix }}' -eq $true) {
+          if ($elementsChanged -contains $element.name -and '${{ steps.get-parent-branch.outputs.parentIsHotfix }}' -eq 'true') {
             $major,$minor,$patch = ($tag -replace "$($element.name)-v","").Split('.')
             [int]$patch+=1
             $tag = "$($element.name)-v$major.$minor.$patch"
